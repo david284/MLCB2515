@@ -1,16 +1,13 @@
-<img align="right" src="arduino_cbus_logo.png"  width="150" height="75">
+<img align="right" src="arduino_mlcb_logo.png"  width="150" height="75">
 
-# Arduino library for MERG CBUS running over CAN bus
+# Arduino library for MERG MLCB running over CAN bus
 
-A library that implements the abstract CBUS base class. It contains methods to support the MCP2515/25625 CAN controller IC
+A library that implements the abstract MLCB base class. It contains methods to support the MCP2515/25625 CAN controller IC
 
-Note that this library depends on a number of other libraries which must also be downloaded and included in the sketch:
+Note that this library depends on a number of other libraries which must also be downloaded:
 
-CBUS 			- abstract CBUS base class
-ACAN2515		- concrete implentation of the CBUS class using the MCP2515 controller
-CBUSswitch
-CBUSLED
-CBUSconfig
+MERGLCB 		- abstract MLCB base class
+ACAN2515		- low-level interface to the MCP2515 CAN controller IC
 Streaming		- C++ style output
 
 ## Hardware
