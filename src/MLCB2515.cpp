@@ -1,7 +1,6 @@
 
 /*
-
-  Copyright (C) Duncan Greenwood 2017 (duncan_greenwood@hotmail.com)
+  Copyright (C) Duncan Greenwood 2023 (duncan_greenwood@hotmail.com)
 
   This work is licensed under the:
       Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
@@ -51,10 +50,6 @@ ACAN2515 *can;    // CAN bus controller specific object - for MCP2515/25625
 /// constructor
 //
 
-MLCB2515::MLCB2515() {
-  initMembers();
-}
-
 MLCB2515::MLCB2515(MLCBConfig *the_config) : MLCBbase(the_config) {
   initMembers();
 }
@@ -89,6 +84,10 @@ bool MLCB2515::begin(bool poll, SPIClass spi)
   _numMsgsRcvd = 0;
   _numMsgsActioned = 0;
   _numNNchanges = 0;
+
+  hbactive = true;
+  hbcount = 0;
+  hbtimer = 0UL;
 
   _poll = poll;
 
@@ -135,10 +134,6 @@ bool MLCB2515::begin(bool poll, SPIClass spi)
   } else {
     // DEBUG_SERIAL << F("> error initialising CAN controller, error code = ") << ret << endl;
   }
-
-  hbactive = true;
-  hbcount = 0;
-  hbtimer = 0UL;
 
   return retval;
 }

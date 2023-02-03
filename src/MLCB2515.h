@@ -1,7 +1,6 @@
 
 /*
-
-  Copyright (C) Duncan Greenwood 2017 (duncan_greenwood@hotmail.com)
+  Copyright (C) Duncan Greenwood 2023 (duncan_greenwood@hotmail.com)
 
   This work is licensed under the:
       Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
