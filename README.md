@@ -1,4 +1,3 @@
-<img align="right" src="arduino_mlcb_logo.png"  width="150" height="75">
 
 # Arduino library for MERG MLCB running over CAN bus
 
