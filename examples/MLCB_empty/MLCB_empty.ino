@@ -1,10 +1,6 @@
 
-//
-///
-//
-
 /*
-  Copyright (C) Duncan Greenwood 2017 (duncan_greenwood@hotmail.com)
+  Copyright (C) Duncan Greenwood 2023 (duncan_greenwood@hotmail.com)
 
   This work is licensed under the:
       Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
@@ -41,36 +37,35 @@
 /*
       3rd party libraries needed for compilation: (not for binary-only distributions)
 
-      Streaming   -- C++ stream style output, v5, (http://arduiniana.org/libraries/streaming/)
-      ACAN2515    -- library to support the MCP2515/25625 CAN controller IC
+      Streaming
+      ACAN2515 - for MCP2515 CAN controller
 */
 
 // 3rd party libraries
 #include <Streaming.h>
 
-// CBUS library header files
-#include <CBUS2515.h>               // CAN controller and CBUS class
-#include <CBUSswitch.h>             // pushbutton switch
-#include <CBUSLED.h>                // CBUS LEDs
-#include <CBUSconfig.h>             // module configuration
-#include <CBUSParams.h>             // CBUS parameters
-#include <cbusdefs.h>               // MERG CBUS constants
+// MLCB library header files
+#include <MLCB2515.h>               // CAN controller and MLCB class
+#include <MLCBSwitch.h>             // pushbutton switch
+#include <MLCBLED.h>                // MLCB LEDs
+#include <MLCBConfig.h>             // module configuration
+#include <MLCBParams.h>             // MLCB parameters
 
 // constants
-const byte VER_MAJ = 1;             // code major version
-const char VER_MIN = 'a';           // code minor version
-const byte VER_BETA = 0;            // code beta sub-version
-const byte MODULE_ID = 99;          // CBUS module type
+const byte MAJOR_VERSION = 1;       // code major version
+const char MINOR_VERSION = 0;       // code minor version
+const byte BUILD_VERSION = 0;       // code build
+const byte MODULE_ID = 99;          // MLCB module type
 
-const byte LED_GRN = 4;             // CBUS green SLiM LED pin
-const byte LED_YLW = 5;             // CBUS yellow FLiM LED pin
-const byte SWITCH0 = 6;             // CBUS push button switch pin
+const byte LED_GRN = 4;             // MLCB green SLiM LED pin
+const byte LED_YLW = 5;             // MLCB yellow FLiM LED pin
+const byte SWITCH0 = 6;             // MLCB push button switch pin
 
-// CBUS objects
-CBUSConfig modconfig;               // configuration object
-CBUS2515 CBUS(&modconfig);          // CBUS object
-CBUSLED ledGrn, ledYlw;             // two LED objects
-CBUSSwitch pb_switch;               // switch object
+// MLCB objects
+MLCBConfig module_config;           // configuration object
+MLCB2515 MLCB(&module_config);      // MLCB object, specific to the CAN hardware in use
+MLCBLED ledGrn, ledYlw;             // two LED objects
+MLCBSwitch pb_switch;               // switch object
 
 // module name, must be 7 characters, space padded.
 unsigned char mname[7] = { 'E', 'M', 'P', 'T', 'Y', ' ', ' ' };
@@ -82,70 +77,69 @@ void processSerialInput(void);
 void printConfig(void);
 
 //
-/// setup CBUS - runs once at power on from setup()
+/// setup MLCB - runs once at power on from setup()
 //
-void setupCBUS() {
+void setupMLCB() {
 
   // set config layout parameters
-  modconfig.EE_NVS_START = 10;
-  modconfig.EE_NUM_NVS = 10;
-  modconfig.EE_EVENTS_START = 50;
-  modconfig.EE_MAX_EVENTS = 32;
-  modconfig.EE_NUM_EVS = 1;
-  modconfig.EE_BYTES_PER_EVENT = (modconfig.EE_NUM_EVS + 4);
+  module_config.EE_NVS_START = 10;
+  module_config.EE_NUM_NVS = 10;
+  module_config.EE_EVENTS_START = 50;
+  module_config.EE_MAX_EVENTS = 32;
+  module_config.EE_NUM_EVS = 1;
+  module_config.EE_BYTES_PER_EVENT = (module_config.EE_NUM_EVS + 4);
 
   // initialise and load configuration
-  modconfig.setEEPROMtype(EEPROM_INTERNAL);
-  modconfig.begin();
+  module_config.setEEPROMtype(EEPROM_INTERNAL);
+  module_config.begin();
 
-  Serial << F("> mode = ") << ((modconfig.FLiM) ? "FLiM" : "SLiM") << F(", CANID = ") << modconfig.CANID;
-  Serial << F(", NN = ") << modconfig.nodeNum << endl;
+  Serial << F("> mode = ") << ((module_config.FLiM) ? "FLiM" : "SLiM") << F(", CANID = ") << module_config.CANID;
+  Serial << F(", NN = ") << module_config.nodeNum << endl;
+
+  // set module parameters
+  MLCBParams params(module_config);
+  params.setVersion(MAJOR_VERSION, MINOR_VERSION, BUILD_VERSION);
+  params.setModuleId(MODULE_ID);
+  params.setFlags(PF_FLiM | PF_COMBI);
+
+  // assign to MLCB
+  MLCB.setParams(params.getParams());
+  MLCB.setName(mname);
 
   // show code version and copyright notice
   printConfig();
 
-  // set module parameters
-  CBUSParams params(modconfig);
-  params.setVersion(VER_MAJ, VER_MIN, VER_BETA);
-  params.setModuleId(MODULE_ID);
-  params.setFlags(PF_FLiM | PF_COMBI);
-
-  // assign to CBUS
-  CBUS.setParams(params.getParams());
-  CBUS.setName(mname);
-
-  // set CBUS LED pins and assign to CBUS
+  // set MLCB LED pins and assign to MLCB
   ledGrn.setPin(LED_GRN);
   ledYlw.setPin(LED_YLW);
-  CBUS.setLEDs(ledGrn, ledYlw);
+  MLCB.setLEDs(ledGrn, ledYlw);
 
-  // initialise CBUS switch and assign to CBUS
+  // initialise MLCB switch and assign to MLCB
   pb_switch.setPin(SWITCH0, LOW);
   pb_switch.run();
-  CBUS.setSwitch(pb_switch);
+  MLCB.setSwitch(pb_switch);
 
-  // module reset - if switch is depressed at startup and module is in SLiM mode
-  if (pb_switch.isPressed() && !modconfig.FLiM) {
-    Serial << F("> switch was pressed at startup in SLiM mode") << endl;
-    modconfig.resetModule(ledGrn, ledYlw, pb_switch);
+  // power-on self-test
+  if (pb_switch.isPressed()) {
+    // do any self-tests here
   }
 
-  // register our CBUS event handler, to receive event messages of learned events
-  CBUS.setEventHandler(eventhandler);
+  // register our MLCB event handler, to receive event messages of learned events
+  MLCB.setEventHandler(eventhandler);
 
   // register our CAN frame handler, to receive *every* CAN frame
-  CBUS.setFrameHandler(framehandler);
+  MLCB.setFrameHandler(framehandler);
 
-  // set CBUS LEDs to indicate the current mode
-  CBUS.indicateMode(modconfig.FLiM);
+  // set MLCB LEDs to indicate the current mode
+  MLCB.indicateMode(module_config.FLiM);
 
-  // configure and start CAN bus and CBUS message processing
-  CBUS.setNumBuffers(2, 1);      // more buffers = more memory used, fewer = less
-  CBUS.setOscFreq(16000000UL);   // select the crystal frequency of the CAN module
-  CBUS.setPins(10, 2);           // select pins for CAN bus CE and interrupt connections
+  // configure and start CAN bus and MLCB message processing
+  MLCB.setNumBuffers(2, 1);      // more buffers = more memory used, fewer = less
+  MLCB.setOscFreq(16000000UL);   // select the crystal frequency of the CAN module
+  MLCB.setPins(10, 2);           // select pins for CAN bus CE and interrupt connections
 
-  if (!CBUS.begin()) {
-    Serial << F("> error starting CBUS") << endl;
+  if (!MLCB.begin()) {
+    Serial << F("> error starting MLCB") << endl;
   }
 }
 
@@ -156,9 +150,9 @@ void setupCBUS() {
 void setup() {
 
   Serial.begin (115200);
-  Serial << endl << endl << F("> ** CBUS Arduino basic example module ** ") << __FILE__ << endl;
+  Serial << endl << endl << F("> ** MLCB Arduino basic example module ** ") << __FILE__ << endl;
 
-  setupCBUS();
+  setupMLCB();
 
   // end of setup
   Serial << F("> ready") << endl << endl;
@@ -171,10 +165,10 @@ void setup() {
 void loop() {
 
   //
-  /// do CBUS message, switch and LED processing
+  /// do MLCB message, switch and LED processing
   //
 
-  CBUS.process();
+  MLCB.process();
 
   //
   /// process console commands
@@ -183,57 +177,33 @@ void loop() {
   processSerialInput();
 
   //
-  /// check CAN message buffers
-  //
-
-  if (CBUS.canp->receiveBufferPeakCount() > CBUS.canp->receiveBufferSize()) {
-    // Serial << F("> receive buffer overflow") << endl;
-  }
-
-  if (CBUS.canp->transmitBufferPeakCount(0) > CBUS.canp->transmitBufferSize(0)) {
-    // Serial << F("> transmit buffer overflow") << endl;
-  }
-
-  //
-  /// check CAN bus state
-  //
-
-  byte s = CBUS.canp->errorFlagRegister();
-
-  if (s != 0) {
-    // Serial << F("> error flag register is non-zero = ") << s << endl;
-  }
-
-  //
   /// bottom of loop()
   //
 }
 
 //
 /// user-defined event processing function
-/// called from the CBUS library when a learned event is received
+/// called from the MLCB library when a learned event is received
 /// it receives the event table index and the CAN frame
 //
 
 void eventhandler(byte index, CANFrame *msg) {
 
   // as an example, display the opcode and the first EV of this event
-
   Serial << F("> event handler: index = ") << index << F(", opcode = 0x") << _HEX(msg->data[0]) << endl;
-  Serial << F("> EV1 = ") << modconfig.getEventEVval(index, 1) << endl;
+  Serial << F("> EV1 = ") << module_config.getEventEVval(index, 1) << endl;
   return;
 }
 
 //
 /// user-defined frame processing function
-/// called from the CBUS library for *every* CAN frame received
+/// called from the MLCB library for *every* CAN frame received
 /// it receives a pointer to the received CAN frame
 //
 
 void framehandler(CANFrame *msg) {
 
   // as an example, format and display the received frame
-
   Serial << "[ " << (msg->id & 0x7f) << "] [" << msg->len << "] [";
 
   for (byte d = 0; d < msg->len; d++) {
@@ -251,11 +221,11 @@ void framehandler(CANFrame *msg) {
 void printConfig(void) {
 
   // code version
-  Serial << F("> code version = ") << VER_MAJ << VER_MIN << F(" beta ") << VER_BETA << endl;
+  Serial << F("> code version = ") << MAJOR_VERSION << "." << MINOR_VERSION << "." << BUILD_VERSION << endl;
   Serial << F("> compiled on ") << __DATE__ << F(" at ") << __TIME__ << F(", compiler ver = ") << __cplusplus << endl;
 
   // copyright
-  Serial << F("> © Duncan Greenwood (MERG M5767) 2019") << endl;
+  Serial << F("> © Duncan Greenwood (MERG M5767) 2023") << endl;
   return;
 }
 
@@ -274,117 +244,117 @@ void processSerialInput(void) {
 
     switch (c) {
 
-    case 'n':
+      case 'n':
 
-      // node config
-      printConfig();
+        // node config
+        printConfig();
 
-      // node identity
-      Serial << F("> CBUS node configuration") << endl;
-      Serial << F("> mode = ") << (modconfig.FLiM ? "FLiM" : "SLiM") << F(", CANID = ") << modconfig.CANID << F(", node number = ") << modconfig.nodeNum << endl;
-      Serial << endl;
-      break;
+        // node identity
+        Serial << F("> MLCB node configuration") << endl;
+        Serial << F("> mode = ") << (module_config.FLiM ? "FLiM" : "SLiM") << F(", CANID = ") << module_config.CANID << F(", node number = ") << module_config.nodeNum << endl;
+        Serial << endl;
+        break;
 
-    case 'e':
+      case 'e':
 
-      // EEPROM learned event data table
-      Serial << F("> stored events ") << endl;
-      Serial << F("  max events = ") << modconfig.EE_MAX_EVENTS << F(" EVs per event = ") << modconfig.EE_NUM_EVS << F(" bytes per event = ") << modconfig.EE_BYTES_PER_EVENT << endl;
+        // EEPROM learned event data table
+        Serial << F("> stored events ") << endl;
+        Serial << F("  max events = ") << module_config.EE_MAX_EVENTS << F(" EVs per event = ") << module_config.EE_NUM_EVS << F(" bytes per event = ") << module_config.EE_BYTES_PER_EVENT << endl;
 
-      for (byte j = 0; j < modconfig.EE_MAX_EVENTS; j++) {
-        if (modconfig.getEvTableEntry(j) != 0) {
-          ++uev;
-        }
-      }
-
-      Serial << F("  stored events = ") << uev << F(", free = ") << (modconfig.EE_MAX_EVENTS - uev) << endl;
-      Serial << F("  using ") << (uev * modconfig.EE_BYTES_PER_EVENT) << F(" of ") << (modconfig.EE_MAX_EVENTS * modconfig.EE_BYTES_PER_EVENT) << F(" bytes") << endl << endl;
-
-      Serial << F("  Ev#  |  NNhi |  NNlo |  ENhi |  ENlo | ");
-
-      for (byte j = 0; j < (modconfig.EE_NUM_EVS); j++) {
-        sprintf(dstr, "EV%03d | ", j + 1);
-        Serial << dstr;
-      }
-
-      Serial << F("Hash |") << endl;
-
-      Serial << F(" --------------------------------------------------------------") << endl;
-
-      // for each event data line
-      for (byte j = 0; j < modconfig.EE_MAX_EVENTS; j++) {
-
-        if (modconfig.getEvTableEntry(j) != 0) {
-          sprintf(dstr, "  %03d  | ", j);
-          Serial << dstr;
-
-          // for each data byte of this event
-          for (byte e = 0; e < (modconfig.EE_NUM_EVS + 4); e++) {
-            sprintf(dstr, " 0x%02hx | ", modconfig.readEEPROM(modconfig.EE_EVENTS_START + (j * modconfig.EE_BYTES_PER_EVENT) + e));
-            Serial << dstr;
+        for (byte j = 0; j < module_config.EE_MAX_EVENTS; j++) {
+          if (module_config.getEvTableEntry(j) != 0) {
+            ++uev;
           }
-
-          sprintf(dstr, "%4d |", modconfig.getEvTableEntry(j));
-          Serial << dstr << endl;
         }
-      }
 
-      Serial << endl;
+        Serial << F("  stored events = ") << uev << F(", free = ") << (module_config.EE_MAX_EVENTS - uev) << endl;
+        Serial << F("  using ") << (uev * module_config.EE_BYTES_PER_EVENT) << F(" of ") << (module_config.EE_MAX_EVENTS * module_config.EE_BYTES_PER_EVENT) << F(" bytes") << endl << endl;
 
-      break;
+        Serial << F("  Ev#  |  NNhi |  NNlo |  ENhi |  ENlo | ");
 
-    // NVs
-    case 'v':
+        for (byte j = 0; j < (module_config.EE_NUM_EVS); j++) {
+          sprintf(dstr, "EV%03d | ", j + 1);
+          Serial << dstr;
+        }
 
-      // note NVs number from 1, not 0
-      Serial << "> Node variables" << endl;
-      Serial << F("   NV   Val") << endl;
-      Serial << F("  --------------------") << endl;
+        Serial << F("Hash |") << endl;
 
-      for (byte j = 1; j <= modconfig.EE_NUM_NVS; j++) {
-        byte v = modconfig.readNV(j);
-        sprintf(msgstr, " - %02d : %3hd | 0x%02hx", j, v, v);
-        Serial << msgstr << endl;
-      }
+        Serial << F(" --------------------------------------------------------------") << endl;
 
-      Serial << endl << endl;
+        // for each event data line
+        for (byte j = 0; j < module_config.EE_MAX_EVENTS; j++) {
 
-      break;
+          if (module_config.getEvTableEntry(j) != 0) {
+            sprintf(dstr, "  %03d  | ", j);
+            Serial << dstr;
 
-    // CAN bus status
-    case 'c':
+            // for each data byte of this event
+            for (byte e = 0; e < (module_config.EE_NUM_EVS + 4); e++) {
+              sprintf(dstr, " 0x%02hx | ", module_config.readEEPROM(module_config.EE_EVENTS_START + (j * module_config.EE_BYTES_PER_EVENT) + e));
+              Serial << dstr;
+            }
 
-      CBUS.printStatus();
-      break;
+            sprintf(dstr, "%4d |", module_config.getEvTableEntry(j));
+            Serial << dstr << endl;
+          }
+        }
 
-    case 'h':
-      // event hash table
-      modconfig.printEvHashTable(false);
-      break;
+        Serial << endl;
 
-    case 'y':
-      // reset CAN bus and CBUS message processing
-      CBUS.reset();
-      break;
+        break;
 
-    case '*':
-      // reboot
-      modconfig.reboot();
-      break;
+      // NVs
+      case 'v':
 
-    case 'm':
-      // free memory
-      Serial << F("> free SRAM = ") << modconfig.freeSRAM() << F(" bytes") << endl;
-      break;
+        // note NVs number from 1, not 0
+        Serial << "> Node variables" << endl;
+        Serial << F("   NV   Val") << endl;
+        Serial << F("  --------------------") << endl;
 
-    case '\r':
-    case '\n':
-      Serial << endl;
-      break;
+        for (byte j = 1; j <= module_config.EE_NUM_NVS; j++) {
+          byte v = module_config.readNV(j);
+          sprintf(msgstr, " - %02d : %3hd | 0x%02hx", j, v, v);
+          Serial << msgstr << endl;
+        }
 
-    default:
-      // Serial << F("> unknown command ") << c << endl;
-      break;
+        Serial << endl << endl;
+
+        break;
+
+      // CAN bus status
+      case 'c':
+
+        MLCB.printStatus();
+        break;
+
+      case 'h':
+        // event hash table
+        module_config.printEvHashTable(false);
+        break;
+
+      case 'y':
+        // reset CAN bus and MLCB message processing
+        MLCB.reset();
+        break;
+
+      case '*':
+        // reboot
+        module_config.reboot();
+        break;
+
+      case 'm':
+        // free memory
+        Serial << F("> free SRAM = ") << module_config.freeSRAM() << F(" bytes") << endl;
+        break;
+
+      case '\r':
+      case '\n':
+        Serial << endl;
+        break;
+
+      default:
+        // Serial << F("> unknown command ") << c << endl;
+        break;
     }
   }
 }
